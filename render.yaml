@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: andijon-marhamat-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: WEBHOOK_URL
+        sync: false
+      - key: PORT
+        value: 10000

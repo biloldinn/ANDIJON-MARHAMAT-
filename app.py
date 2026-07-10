@@ -321,13 +321,20 @@ def set_webhook():
 
 # ============ LOCAL RUN ============
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
     if WEBHOOK_URL:
-        flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+        # Webhook rejimi (Render, Railway, etc.)
+        async def set_wh():
+            async with ptb_app:
+                url = f"{WEBHOOK_URL.rstrip('/')}/{TOKEN}"
+                await ptb_app.bot.set_webhook(url=url)
+                print(f"Webhook o'rnatildi: {url}")
+        asyncio.run(set_wh())
+        flask_app.run(host="0.0.0.0", port=port)
     else:
-        # Local polling
-        import sys
-        from telegram.ext import Application
-        app2 = Application.builder().token(TOKEN).build()
+        # Local polling rejimi
+        from telegram.ext import Application as App
+        app2 = App.builder().token(TOKEN).build()
         app2.add_handler(CommandHandler("start", start))
         app2.add_handler(CommandHandler("chatid", chatid))
         app2.add_handler(MessageHandler(filters.LOCATION, handle_location))
