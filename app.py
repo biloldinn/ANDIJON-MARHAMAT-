@@ -310,9 +310,10 @@ def index():
 
 @app.route("/set_webhook", methods=["GET"])
 def set_webhook():
+    base_url = WEBHOOK_URL if WEBHOOK_URL else request.host_url
     async def _set():
         async with ptb_app:
-            url = f"{WEBHOOK_URL.rstrip('/')}/{TOKEN}"
+            url = f"{base_url.rstrip('/')}/{TOKEN}"
             await ptb_app.bot.set_webhook(url=url)
             return url
     loop = asyncio.new_event_loop()
