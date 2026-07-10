@@ -28,7 +28,7 @@ STATE_ENTERING_PHONE = "entering_phone"
 STATE_SENDING_LOCATION = "sending_location"
 
 # ============ FLASK APP ============
-flask_app = Flask(__name__)
+app = Flask(__name__)
 
 # ============ TELEGRAM APP (global) ============
 ptb_app = Application.builder().token(TOKEN).build()
@@ -292,7 +292,7 @@ ptb_app.add_handler(CallbackQueryHandler(handle_accept_order, pattern="^accept_"
 ptb_app.add_handler(CallbackQueryHandler(handle_reject_order, pattern="^reject_"))
 
 # ============ FLASK ROUTES ============
-@flask_app.route(f"/{TOKEN}", methods=["POST"])
+@app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
     loop = asyncio.new_event_loop()
@@ -304,11 +304,11 @@ def webhook():
     loop.run_until_complete(process())
     return Response("ok", status=200)
 
-@flask_app.route("/", methods=["GET"])
+@app.route("/", methods=["GET"])
 def index():
     return "Andijon Marhamat Taksi Bot ishlayapti!", 200
 
-@flask_app.route("/set_webhook", methods=["GET"])
+@app.route("/set_webhook", methods=["GET"])
 def set_webhook():
     async def _set():
         async with ptb_app:
@@ -330,7 +330,7 @@ if __name__ == "__main__":
                 await ptb_app.bot.set_webhook(url=url)
                 print(f"Webhook o'rnatildi: {url}")
         asyncio.run(set_wh())
-        flask_app.run(host="0.0.0.0", port=port)
+        app.run(host="0.0.0.0", port=port)
     else:
         # Local polling rejimi
         from telegram.ext import Application as App
