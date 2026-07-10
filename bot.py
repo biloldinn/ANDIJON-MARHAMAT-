@@ -106,7 +106,8 @@ async def choose_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         f"📍 Manzil: *{context.user_data['destination']}* qabul qilindi!\n\n"
-        "Endi iltimos, ismingizni yozib yuboring:",
+        "Endi ismingizni yozing:\n"
+        "(Masalan: Alisher)",
         reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True),
         parse_mode='Markdown'
     )
@@ -117,42 +118,40 @@ async def enter_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     if text == "⬅️ Orqaga":
         await update.message.reply_text(
-            "Qayerga borasiz? Iltimos, aniq manzilni yozib yuboring:",
-            reply_markup=ReplyKeyboardMarkup([["⬅️ Asosiy menyuga qaytish"]], resize_keyboard=True)
+            "Qayerga borasiz? Manzilni yozib yuboring:",
+            reply_markup=get_where_to_go()
         )
         return CHOOSING_TO
-        
+    
     context.user_data['name'] = text
     
-    contact_button = KeyboardButton("📱 Raqamni yuborish", request_contact=True)
-    keyboard = [[contact_button], ["⬅️ Orqaga"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    
     await update.message.reply_text(
-        f"👤 Ismingiz qabul qilindi: {text}\n\n"
-        f"📱 Endi telefon raqamingizni yuboring yoki yozing:\n"
-        f"(Masalan: 90 123 45 67)",
-        reply_markup=reply_markup
+        f"👤 Ism: *{text}* qabul qilindi!\n\n"
+        "Endi telefon raqamingizni yuboring:\n"
+        "(Masalan: +998901234567)",
+        reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True),
+        parse_mode='Markdown'
     )
     return ENTERING_PHONE
 
 async def enter_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Telefonni qabul qilish"""
-    if update.message.text == "⬅️ Orqaga":
+    """Telefon raqamini qabul qilish"""
+    text = update.message.text
+    if text == "⬅️ Orqaga":
         await update.message.reply_text(
-            "Iltimos, ismingizni yozib yuboring:",
+            "Ismingizni yozing:",
             reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True)
         )
         return ENTERING_NAME
-        
-    if getattr(update.message, 'contact', None):
-        phone = update.message.contact.phone_number
-    else:
-        phone = update.message.text
-        phone = re.sub(r'[^0-9+]', '', phone)
-        if len(phone) < 7:
-            await update.message.reply_text("❌ Noto'g'ri raqam. Qaytadan kiriting:")
-            return ENTERING_PHONE
+    
+    phone = re.sub(r'[^0-9+]', '', text)
+    if len(phone) < 5:
+        await update.message.reply_text(
+            "❌ Telefon raqami noto'g'ri! Qaytadan yozing:\n"
+            "Masalan: *+998901234567*",
+            parse_mode='Markdown'
+        )
+        return ENTERING_PHONE
     
     context.user_data['phone'] = phone
     
@@ -161,20 +160,20 @@ async def enter_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
     await update.message.reply_text(
-        f"✅ Raqam qabul qilindi!\n\n"
-        f"📍 Iltimos, oxirgi qadam sifatida lokatsiyangizni yuboring (pastdagi tugmani bosing):",
-        reply_markup=reply_markup
+        f"📱 Telefon: *{phone}* qabul qilindi!\n\n"
+        f"📍 Iltimos, lokatsiyangizni yuboring:",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
     )
     return SENDING_LOCATION
 
 async def send_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Lokatsiyani qabul qilish va tasdiqlash so'rash"""
     if update.message.text == "⬅️ Orqaga":
-        contact_button = KeyboardButton("📱 Raqamni yuborish", request_contact=True)
-        keyboard = [[contact_button], ["⬅️ Orqaga"]]
         await update.message.reply_text(
-            "Iltimos, telefon raqamingizni yuboring:",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            "Telefon raqamingizni yuboring:\n"
+            "(Masalan: +998901234567)",
+            reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True)
         )
         return ENTERING_PHONE
 
@@ -350,7 +349,7 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, enter_name)
             ],
             ENTERING_PHONE: [
-                MessageHandler(filters.CONTACT | (filters.TEXT & ~filters.COMMAND), enter_phone)
+                MessageHandler(filters.TEXT & ~filters.COMMAND, enter_phone)
             ],
             SENDING_LOCATION: [
                 MessageHandler(filters.LOCATION | (filters.TEXT & ~filters.COMMAND), send_location)
