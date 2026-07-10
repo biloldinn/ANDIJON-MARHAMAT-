@@ -56,13 +56,22 @@ def get_admin_buttons(user_id):
     return InlineKeyboardMarkup(keyboard)
 
 # ============ KOMANDALAR ============
+async def chatid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Chat ID ni ko'rsatish (guruh ID ni aniqlash uchun)"""
+    chat = update.effective_chat
+    await update.message.reply_text(
+        f"Bu chatning ID si: `{chat.id}`\n"
+        f"Chat turi: {chat.type}",
+        parse_mode='Markdown'
+    )
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start komandasi"""
     user = update.effective_user
     
     await update.message.reply_text(
-        f"🚕 *Andijon Marhamat Taksi* 🚕\n\n"
-        f"Assalomu alaykum, {user.first_name}! 👋\n\n"
+        f"\U0001f695 *Andijon Marhamat Taksi* \U0001f695\n\n"
+        f"Assalomu alaykum, {user.first_name}! \U0001f44b\n\n"
         f"Men sizning shaxsiy taksi botingizman.\n"
         f"Quyidagi menyudan kerakli joyni tanlang:",
         reply_markup=get_main_menu(),
@@ -226,7 +235,7 @@ async def handle_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     order_text = (
         f"🚕 *YANGI BUYURTMA!* 🚕\n\n"
         f"👤 *Mijoz:* {data.get('name')}\n"
-        f"📱 *Telefon:* {data.get('phone')}\n"
+        f"📱 *Telefon:* [{data.get('phone')}](tel:{data.get('phone')})\n"
         f"🚖 *Qayerdan:* {data.get('from_location')}\n"
         f"📍 *Qayerga:* {data.get('destination')}\n"
         f"🆔 *ID:* {user_id}\n"
@@ -335,7 +344,7 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler('start', start),
-            MessageHandler(filters.Regex('^(🚖 Andijondan 🚖|🚖 Marhamatdan 🚖)$'), choose_from)
+            MessageHandler(filters.Regex('^(\U0001f696 Andijondan \U0001f696|\U0001f696 Marhamatdan \U0001f696)$'), choose_from)
         ],
         states={
             CHOOSING_FROM: [
@@ -359,6 +368,7 @@ def main():
     )
     
     app.add_handler(conv_handler)
+    app.add_handler(CommandHandler("chatid", chatid))
     
     app.add_handler(CallbackQueryHandler(handle_confirm, pattern="^confirm_"))
     app.add_handler(CallbackQueryHandler(handle_cancel_order, pattern="^cancel_"))
