@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 user_data_store = {}  # Foydalanuvchi ma'lumotlarini saqlash (Callbacklar uchun)
 
 # ============ Holatlar (States) ============
-CHOOSING_FROM, CHOOSING_TO, ENTERING_INFO, SENDING_LOCATION = range(4)
+CHOOSING_FROM, CHOOSING_TO, ENTERING_NAME, ENTERING_PHONE, SENDING_LOCATION = range(5)
 
 # ============ KLAVIATURALAR ============
 def get_main_menu():
@@ -106,34 +106,54 @@ async def choose_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         f"📍 Manzil: *{context.user_data['destination']}* qabul qilindi!\n\n"
-        "Endi ismingiz va telefon raqamingizni yuboring:\n"
-        "(Masalan: Alisher 90 123 45 67)",
+        "Endi iltimos, ismingizni yozib yuboring:",
         reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True),
         parse_mode='Markdown'
     )
-    return ENTERING_INFO
+    return ENTERING_NAME
 
-async def enter_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Ism va telefonni qabul qilish"""
+async def enter_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ismni qabul qilish"""
     text = update.message.text
     if text == "⬅️ Orqaga":
-        await update.message.reply_text("Qayerga borasiz?", reply_markup=get_where_to_go())
+        await update.message.reply_text(
+            "Qayerga borasiz? Iltimos, aniq manzilni yozib yuboring:",
+            reply_markup=ReplyKeyboardMarkup([["⬅️ Asosiy menyuga qaytish"]], resize_keyboard=True)
+        )
         return CHOOSING_TO
         
-    parts = text.split()
-    if len(parts) >= 2:
-        name = " ".join(parts[:-1])
-        phone = parts[-1]
-        phone = re.sub(r'[^0-9+]', '', phone)
-    else:
-        await update.message.reply_text(
-            "❌ Iltimos, ismingiz va telefon raqamingizni to'g'ri yozing:\n"
-            "Masalan: *Alisher +998901234567*",
-            parse_mode='Markdown'
-        )
-        return ENTERING_INFO
+    context.user_data['name'] = text
     
-    context.user_data['name'] = name
+    contact_button = KeyboardButton("📱 Raqamni yuborish", request_contact=True)
+    keyboard = [[contact_button], ["⬅️ Orqaga"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
+    await update.message.reply_text(
+        f"👤 Ismingiz qabul qilindi: {text}\n\n"
+        f"📱 Endi telefon raqamingizni yuboring yoki yozing:\n"
+        f"(Masalan: 90 123 45 67)",
+        reply_markup=reply_markup
+    )
+    return ENTERING_PHONE
+
+async def enter_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Telefonni qabul qilish"""
+    if update.message.text == "⬅️ Orqaga":
+        await update.message.reply_text(
+            "Iltimos, ismingizni yozib yuboring:",
+            reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True)
+        )
+        return ENTERING_NAME
+        
+    if getattr(update.message, 'contact', None):
+        phone = update.message.contact.phone_number
+    else:
+        phone = update.message.text
+        phone = re.sub(r'[^0-9+]', '', phone)
+        if len(phone) < 7:
+            await update.message.reply_text("❌ Noto'g'ri raqam. Qaytadan kiriting:")
+            return ENTERING_PHONE
+    
     context.user_data['phone'] = phone
     
     location_button = KeyboardButton("📍 Lokatsiya yuborish", request_location=True)
@@ -141,10 +161,8 @@ async def enter_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
     await update.message.reply_text(
-        f"✅ Ma'lumotlar qabul qilindi!\n\n"
-        f"👤 Ism: {name}\n"
-        f"📱 Telefon: {phone}\n\n"
-        f"📍 Iltimos, lokatsiyangizni yuboring (yoki pastdagi tugmani bosing):",
+        f"✅ Raqam qabul qilindi!\n\n"
+        f"📍 Iltimos, oxirgi qadam sifatida lokatsiyangizni yuboring (pastdagi tugmani bosing):",
         reply_markup=reply_markup
     )
     return SENDING_LOCATION
@@ -152,12 +170,13 @@ async def enter_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Lokatsiyani qabul qilish va tasdiqlash so'rash"""
     if update.message.text == "⬅️ Orqaga":
+        contact_button = KeyboardButton("📱 Raqamni yuborish", request_contact=True)
+        keyboard = [[contact_button], ["⬅️ Orqaga"]]
         await update.message.reply_text(
-            "Endi ismingiz va telefon raqamingizni yuboring:\n"
-            "(Masalan: Alisher 90 123 45 67)",
-            reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True)
+            "Iltimos, telefon raqamingizni yuboring:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
-        return ENTERING_INFO
+        return ENTERING_PHONE
 
     if not update.message.location:
         await update.message.reply_text("Iltimos, lokatsiyangizni yuboring.")
@@ -327,8 +346,11 @@ def main():
             CHOOSING_TO: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, choose_to)
             ],
-            ENTERING_INFO: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, enter_info)
+            ENTERING_NAME: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, enter_name)
+            ],
+            ENTERING_PHONE: [
+                MessageHandler(filters.CONTACT | (filters.TEXT & ~filters.COMMAND), enter_phone)
             ],
             SENDING_LOCATION: [
                 MessageHandler(filters.LOCATION | (filters.TEXT & ~filters.COMMAND), send_location)
