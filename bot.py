@@ -301,10 +301,15 @@ async def handle_accept_order(update: Update, context: ContextTypes.DEFAULT_TYPE
     admin = update.effective_user
     
     try:
+        # Haydovchi to'liq ismi
+        driver_name = admin.first_name
+        if admin.last_name:
+            driver_name += f" {admin.last_name}"
+        
         await context.bot.send_message(
             chat_id=user_id,
             text=f"✅ *Buyurtmangiz qabul qilindi!* ✅\n\n"
-                 f"🚖 Haydovchi: {admin.first_name}\n"
+                 f"🚖 *Haydovchi:* [{driver_name}](tg://user?id={admin.id})\n"
                  f"📞 Aloqa: Tez orada bog'lanadi\n\n"
                  f"⏳ Kuting, 5-10 daqiqa ichida yetib boramiz!\n"
                  f"🚕 *Andijon Marhamat Taksi*",
