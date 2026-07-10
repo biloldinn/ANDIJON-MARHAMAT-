@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 user_data_store = {}  # Foydalanuvchi ma'lumotlarini saqlash (Callbacklar uchun)
 
 # ============ Holatlar (States) ============
-CHOOSING_FROM, CHOOSING_TO, CUSTOM_TO, ENTERING_INFO, SENDING_LOCATION = range(5)
+CHOOSING_FROM, CHOOSING_TO, ENTERING_INFO, SENDING_LOCATION = range(4)
 
 # ============ KLAVIATURALAR ============
 def get_main_menu():
@@ -35,9 +35,6 @@ def get_main_menu():
 def get_where_to_go():
     """Qayerga borish menyusi"""
     keyboard = [
-        [KeyboardButton("🚉 Vokzal"), KeyboardButton("🏥 Kasalxona")],
-        [KeyboardButton("🏢 Markaziy Bozor"), KeyboardButton("🏫 Universitet")],
-        [KeyboardButton("✈️ Aeroport"), KeyboardButton("📝 Boshqa manzil")],
         [KeyboardButton("⬅️ Asosiy menyuga qaytish")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -91,7 +88,7 @@ async def choose_from(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         f"📍 *{context.user_data['from_location']}* tanlandi!\n\n"
-        "Qayerga borasiz? Manzilni tanlang:",
+        "Qayerga borasiz? Iltimos, aniq manzilni yozib yuboring:",
         reply_markup=get_where_to_go(),
         parse_mode='Markdown'
     )
@@ -105,36 +102,10 @@ async def choose_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Asosiy menyu:", reply_markup=get_main_menu())
         return CHOOSING_FROM
         
-    if text == "📝 Boshqa manzil":
-        await update.message.reply_text(
-            "✍️ Iltimos, manzilni to'liq yozib yuboring:\n"
-            "(Masalan: Navoiy ko'chasi, 12-uy)",
-            reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True)
-        )
-        return CUSTOM_TO
-    
-    context.user_data['destination'] = text.replace("🚉 ", "").replace("🏥 ", "").replace("🏢 ", "").replace("🏫 ", "").replace("✈️ ", "")
-    
-    await update.message.reply_text(
-        f"📍 Manzil: *{context.user_data['destination']}* qabul qilindi!\n\n"
-        "Endi ismingiz va telefon raqamingizni yuboring:\n"
-        "(Masalan: Alisher 90 123 45 67)",
-        reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True),
-        parse_mode='Markdown'
-    )
-    return ENTERING_INFO
-
-async def custom_to(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Boshqa manzilni kiritish"""
-    text = update.message.text
-    if text == "⬅️ Orqaga":
-        await update.message.reply_text("Qayerga borasiz?", reply_markup=get_where_to_go())
-        return CHOOSING_TO
-        
     context.user_data['destination'] = text
     
     await update.message.reply_text(
-        f"📍 Manzil: *{text}* qabul qilindi!\n\n"
+        f"📍 Manzil: *{context.user_data['destination']}* qabul qilindi!\n\n"
         "Endi ismingiz va telefon raqamingizni yuboring:\n"
         "(Masalan: Alisher 90 123 45 67)",
         reply_markup=ReplyKeyboardMarkup([["⬅️ Orqaga"]], resize_keyboard=True),
@@ -356,9 +327,6 @@ def main():
             CHOOSING_TO: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, choose_to)
             ],
-            CUSTOM_TO: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, custom_to)
-            ],
             ENTERING_INFO: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, enter_info)
             ],
@@ -376,8 +344,22 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_accept_order, pattern="^accept_"))
     app.add_handler(CallbackQueryHandler(handle_reject_order, pattern="^reject_"))
     
-    print("Bot ishga tushdi...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    import os
+    WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
+    PORT = int(os.environ.get("PORT", "8000"))
+    
+    if WEBHOOK_URL:
+        print(f"Bot webhook orqali ishga tushdi: {WEBHOOK_URL}")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TOKEN,
+            webhook_url=f"{WEBHOOK_URL.rstrip('/')}/{TOKEN}",
+            allowed_updates=Update.ALL_TYPES
+        )
+    else:
+        print("Bot polling orqali ishga tushdi...")
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
