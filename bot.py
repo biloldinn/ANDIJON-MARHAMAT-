@@ -244,20 +244,31 @@ async def handle_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     try:
-        # Guruhga yuborish
-        msg = await context.bot.send_message(
-            chat_id=GROUP_ID,
-            text=order_text,
-            reply_markup=get_admin_buttons(user_id),
-            parse_mode='Markdown'
+        # Lokatsiya va ma'lumotlarni bitta xabarda guruhga yuborish
+        order_caption = (
+            f"🚕 *YANGI BUYURTMA!* 🚕\n\n"
+            f"👤 *Mijoz:* {data.get('name')}\n"
+            f"📱 *Telefon:* [{data.get('phone')}](tel:{data.get('phone')})\n"
+            f"🚖 *Qayerdan:* {data.get('from_location')}\n"
+            f"📍 *Qayerga:* {data.get('destination')}\n"
+            f"🔗 *Profil:* [Mijoz profili](tg://user?id={user_id})"
         )
         
-        # Lokatsiyani guruhga yuborish
-        await context.bot.send_location(
+        await context.bot.send_venue(
             chat_id=GROUP_ID,
             latitude=data['latitude'],
             longitude=data['longitude'],
-            reply_to_message_id=msg.message_id
+            title=f"Mijoz: {data.get('name')} | {data.get('phone')}",
+            address=f"Qayerdan: {data.get('from_location')} → Qayerga: {data.get('destination')}",
+            reply_markup=get_admin_buttons(user_id)
+        )
+        
+        # Matnli ma'lumotlarni ham yuborish (telefon bosiladigan bo'lishi uchun)
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            text=order_caption,
+            parse_mode='Markdown',
+            reply_markup=get_admin_buttons(user_id)
         )
         
         await query.edit_message_text(
